@@ -9,6 +9,8 @@ weatherForm.addEventListener("submit", async event => {
     if (city){
         const weatherData = await getWeatherData(city);
         displayWeather(weatherData);
+        const forecastData = await getForecastData(city);
+        displayForecast(forecastData);
     } else {
         displayError("Please enter a city");
     }
@@ -16,9 +18,30 @@ weatherForm.addEventListener("submit", async event => {
 
 async function getWeatherData(city){
     try{
-        const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}`;
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
         const response = await fetch(url);
-        const responseJson = response.json();
+        const responseJson = await response.json();
+
+        if (responseJson.cod >= 400 && responseJson.cod <= 500){
+            throw new Error();
+        }
+
+        return responseJson;
+    } catch(error){
+        displayError("Cannot retrieve data")
+    }
+}
+
+async function getForecastData(city){
+    try{
+        const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+        const response = await fetch(url);
+        const responseJson = await response.json();
+
+        if (responseJson.cod >= 400 && responseJson.cod <= 500){
+            throw new Error();
+        }
+
         return responseJson;
     } catch(error){
         displayError("Cannot retrieve data")
@@ -41,7 +64,7 @@ function displayWeather(data){
     const weatherEmoji = document.createElement("p");
 
     cityDisplay.textContent = city;
-    tempDisplay.textContent = `${(temp - 273.15).toFixed(1)}°C`;
+    tempDisplay.textContent = `${temp}°C`;
     humidityDisplay.textContent = `Humidity: ${humidity}%`;
     descDisplay.textContent = description;
     weatherEmoji.textContent = getWeatherEmoji(id);
@@ -59,6 +82,43 @@ function displayWeather(data){
     card.appendChild(weatherEmoji);
 }
 
+function displayForecast(data){
+    const forecastArray = data.list;
+    const forecast24Hours = forecastArray.slice(0,8);
+
+    const forecastDisplay = document.createElement("div");
+    forecastDisplay.classList.add("forecastDisplay");
+    card.appendChild(forecastDisplay);
+    
+    forecast24Hours.forEach(element => {
+        // console.log(element);
+        const dateTime = new Date(element.dt * 1000);
+        const hourTime = dateTime.getHours();
+        const temp = element.main.temp;
+        const weatherEmoji = getWeatherEmoji(element.weather[0].id);
+
+        const forecastCard = document.createElement("div");
+        forecastCard.classList.add("forecastCards");
+        forecastDisplay.appendChild(forecastCard);
+
+        const forecastHour = document.createElement("p");
+        const forecastTemp = document.createElement("p");
+        const foreCastEmoji = document.createElement("p");
+
+        forecastHour.textContent = `${hourTime}:00`;
+        forecastTemp.textContent = `${temp}°C`;
+        foreCastEmoji.textContent = weatherEmoji;
+
+        forecastHour.classList.add("forecastHour");
+        forecastTemp.classList.add("forecastTemp");
+        foreCastEmoji.classList.add("foreCastEmoji");
+
+        forecastCard.appendChild(forecastHour);
+        forecastCard.appendChild(forecastTemp);
+        forecastCard.appendChild(foreCastEmoji);
+    });
+}
+
 function getWeatherEmoji(weatherId){
     switch (true){
         case (weatherId >= 200 && weatherId <= 300):
@@ -69,7 +129,7 @@ function getWeatherEmoji(weatherId){
             return "🌧️";
         case (weatherId >= 600 && weatherId <= 700):
             return "❄️";
-        case (weatherId >= 700 && weatherId <= 800):
+        case (weatherId >= 700 && weatherId < 800):
             return "🌫️";
         case (weatherId === 800):
             return "☀️";
